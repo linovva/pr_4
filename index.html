@@ -3,42 +3,110 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AR Hit Test</title>
 </head>
 
 <body>
   <button id="start">START AR</button>
 
-  <script>
-    const button = document.getElementById('start');
+  <script type="module">
+    import * as THREE from
+      "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 
-    button.onclick = async () => {
-      try {
-        console.log('XR:', navigator.xr);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera();
 
-        const supported =
-          await navigator.xr?.isSessionSupported('immersive-ar');
+    const renderer = new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: true
+    });
 
-        console.log('AR supported:', supported);
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.xr.enabled = true;
+    renderer.xr.setReferenceSpaceType("local-floor");
 
-        if (!supported) {
-          alert('immersive-ar НЕ поддерживается этим браузером');
-          return;
+    document.body.appendChild(renderer.domElement);
+
+    // Куб
+    const cube = new THREE.Mesh(
+      new THREE.BoxGeometry(0.15, 0.15, 0.15),
+      new THREE.MeshNormalMaterial()
+    );
+
+    cube.visible = false;
+    scene.add(cube);
+
+    // Маркер
+    const marker = new THREE.Mesh(
+      new THREE.RingGeometry(0.08, 0.1, 32),
+      new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+    );
+
+    marker.rotation.x = -Math.PI / 2;
+    marker.visible = false;
+    scene.add(marker);
+
+    let hitTestSource;
+    let referenceSpace;
+
+    document.getElementById("start").onclick = async () => {
+
+      const session = await navigator.xr.requestSession(
+        "immersive-ar",
+        {
+          requiredFeatures: ["hit-test", "local-floor"]
         }
+      );
 
-        const session =
-          await navigator.xr.requestSession('immersive-ar');
+      renderer.xr.setSession(session);
 
-        alert('AR SESSION ЗАПУЩЕНА');
+      referenceSpace =
+        await session.requestReferenceSpace("local-floor");
 
-        session.addEventListener('end', () => {
-          alert('AR SESSION ЗАКРЫТА');
+      const viewerSpace =
+        await session.requestReferenceSpace("viewer");
+
+      hitTestSource =
+        await session.requestHitTestSource({
+          space: viewerSpace
         });
 
-      } catch (e) {
-        console.error(e);
-        alert(e.name + ': ' + e.message);
-      }
+      session.addEventListener("select", () => {
+
+        if (marker.visible) {
+          cube.position.copy(marker.position);
+          cube.visible = true;
+          marker.visible = false;
+        }
+
+      });
     };
+
+    renderer.setAnimationLoop((time, frame) => {
+
+      if (frame && hitTestSource) {
+
+        const results =
+          frame.getHitTestResults(hitTestSource);
+
+        if (results.length > 0) {
+
+          const pose =
+            results[0].getPose(referenceSpace);
+
+          marker.position.set(
+            pose.transform.position.x,
+            pose.transform.position.y,
+            pose.transform.position.z
+          );
+
+          if (!cube.visible)
+            marker.visible = true;
+        }
+      }
+
+      renderer.render(scene, camera);
+    });
   </script>
 </body>
 </html>
