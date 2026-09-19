@@ -33,8 +33,6 @@
 
         document.body.appendChild(renderer.domElement);
 
-
-        // Загружаем модель
         let model;
 
         const loader = new GLTFLoader();
@@ -47,9 +45,7 @@
 
                 model.visible = false;
 
-                // Если модель слишком большая/маленькая,
-                // можно изменить это значение
-                model.scale.set(1, 1, 1);
+                model.scale.set(0.01, 0.01, 0.01);
 
                 scene.add(model);
             },
