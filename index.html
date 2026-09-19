@@ -32,7 +32,7 @@
         loader.load("model.glb", gltf => {
             model = gltf.scene;
             model.visible = false;
-            model.scale.set(0.2, 0.2, 0.2);
+            model.scale.set(0.1, 0.1, 0.1);
             scene.add(model);
         }, undefined, error => {
             console.error("Ошибка загрузки model.glb:", error);
