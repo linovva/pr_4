@@ -1,104 +1,44 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>AR Hit Test</title>
-
-    <script type="importmap">
-        {
-            "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"
-            }
-        }
-  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 
 <body>
-    <script type="module">
-        import * as THREE from 'three';
+  <button id="start">START AR</button>
 
-        const scene = new THREE.Scene();
+  <script>
+    const button = document.getElementById('start');
 
-        const camera = new THREE.PerspectiveCamera();
-        const renderer = new THREE.WebGLRenderer({
-            antialias: true,
-            alpha: true
+    button.onclick = async () => {
+      try {
+        console.log('XR:', navigator.xr);
+
+        const supported =
+          await navigator.xr?.isSessionSupported('immersive-ar');
+
+        console.log('AR supported:', supported);
+
+        if (!supported) {
+          alert('immersive-ar НЕ поддерживается этим браузером');
+          return;
+        }
+
+        const session =
+          await navigator.xr.requestSession('immersive-ar');
+
+        alert('AR SESSION ЗАПУЩЕНА');
+
+        session.addEventListener('end', () => {
+          alert('AR SESSION ЗАКРЫТА');
         });
 
-        renderer.setSize(innerWidth, innerHeight);
-        renderer.xr.enabled = true;
-        renderer.xr.setReferenceSpaceType('local-floor');
-        document.body.appendChild(renderer.domElement);
-
-        // Куб
-        const cube = new THREE.Mesh(
-            new THREE.BoxGeometry(.15, .15, .15),
-            new THREE.MeshNormalMaterial()
-        );
-        cube.visible = false;
-        scene.add(cube);
-
-        // Маркер
-        const marker = new THREE.Mesh(
-            new THREE.RingGeometry(.08, .1, 32),
-            new THREE.MeshBasicMaterial({color: 0x00ff00})
-        );
-        marker.rotation.x = -Math.PI / 2;
-        marker.visible = false;
-        scene.add(marker);
-
-        let hitSource, referenceSpace;
-
-        // Запуск AR
-        document.body.onclick = async () => {
-            if (renderer.xr.isPresenting) return;
-
-            const session = await navigator.xr.requestSession('immersive-ar', {
-                requiredFeatures: ['hit-test', 'local-floor']
-            });
-
-            renderer.xr.setSession(session);
-
-            referenceSpace = await session.requestReferenceSpace('local-floor');
-
-            const viewerSpace = await session.requestReferenceSpace('viewer');
-
-            hitSource = await session.requestHitTestSource({
-                space: viewerSpace
-            });
-
-            session.addEventListener('select', () => {
-                if (marker.visible) {
-                    cube.position.copy(marker.position);
-                    cube.visible = true;
-                    marker.visible = false;
-                }
-            });
-        };
-
-        // Hit-test
-        renderer.setAnimationLoop((time, frame) => {
-            if (frame && hitSource) {
-                const hits = frame.getHitTestResults(hitSource);
-
-                if (hits.length) {
-                    const pose = hits[0].getPose(referenceSpace);
-
-                    marker.position.set(
-                        pose.transform.position.x,
-                        pose.transform.position.y,
-                        pose.transform.position.z
-                    );
-
-                    if (!cube.visible) marker.visible = true;
-                }
-            }
-
-            renderer.render(scene, camera);
-        });
-    </script>
+      } catch (e) {
+        console.error(e);
+        alert(e.name + ': ' + e.message);
+      }
+    };
+  </script>
 </body>
-
 </html>
